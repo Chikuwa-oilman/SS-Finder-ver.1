@@ -9,9 +9,19 @@
   <body>
     <header class="header">
       <h1>SS Finder（ガソリンスタンド検索・試作）</h1>
+      <button id="open-key-setup" class="btn btn-sm btn-secondary" type="button">APIキー設定</button>
     </header>
 
     <main class="container">
+      <section id="key-setup" class="card hidden" aria-live="polite">
+        <h2>APIキー設定</h2>
+        <p class="helper">Google Maps の API キーを入力して保存します（保存後にページを再読み込みします）。<br>公開環境ではキーに <b>HTTP リファラ制限</b> を必ず設定してください。</p>
+        <div class="search-form">
+          <input id="api-key-input" type="text" placeholder="Google Maps API キー" />
+          <button id="api-key-save" type="button" class="btn btn-primary">保存</button>
+          <button id="api-key-clear" type="button" class="btn btn-secondary">クリア</button>
+        </div>
+      </section>
       <section class="card">
         <form id="search-form" class="search-form">
           <label for="query">ガソリンスタンド名：</label>
@@ -76,4 +86,3 @@
     <script src="app.js"></script>
   </body>
   </html>
-

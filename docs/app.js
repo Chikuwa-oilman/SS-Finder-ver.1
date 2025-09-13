@@ -41,6 +41,12 @@
   const formEl = $("search-form");
   const searchBtn = $("search-btn");
   const cancelBtn = $("cancel-btn");
+  // APIキー設定UI
+  const keySetup = document.getElementById('key-setup');
+  const apiKeyInput = document.getElementById('api-key-input');
+  const apiKeySave = document.getElementById('api-key-save');
+  const apiKeyClear = document.getElementById('api-key-clear');
+  const openKeySetupBtn = document.getElementById('open-key-setup');
   // エリア入力・現在地ボタンは削除
   const areaEl = null;
   const geoBtn = null;
@@ -54,6 +60,43 @@
     message.textContent = text;
     message.className = `message ${type}${isLoading ? " loading" : ""}`;
   };
+
+  function showKeySetup(visible) {
+    if (!keySetup) return;
+    keySetup.classList.toggle('hidden', !visible);
+    if (visible && apiKeyInput) apiKeyInput.value = (API_KEY || '').trim();
+  }
+
+  // 初期：キー未設定ならUIを出して検索を無効化
+  if (!hasKey()) {
+    showKeySetup(true);
+    if (searchBtn) searchBtn.disabled = true;
+    setMessage('APIキーが設定されていません。上の「APIキー設定」から保存してください。', 'warn');
+  }
+
+  if (openKeySetupBtn) {
+    openKeySetupBtn.onclick = () => {
+      showKeySetup(true);
+    };
+  }
+
+  if (apiKeySave) {
+    apiKeySave.onclick = () => {
+      const v = (apiKeyInput?.value || '').trim();
+      if (!v) { setMessage('キーが空です。入力してください。', 'warn'); return; }
+      try { localStorage.setItem('GMAPS_API_KEY', v); } catch (_) {}
+      setMessage('APIキーを保存しました。ページを再読み込みします…', 'success');
+      setTimeout(() => { location.reload(); }, 400);
+    };
+  }
+
+  if (apiKeyClear) {
+    apiKeyClear.onclick = () => {
+      try { localStorage.removeItem('GMAPS_API_KEY'); } catch (_) {}
+      setMessage('APIキーを削除しました。ページを再読み込みします…', 'success');
+      setTimeout(() => { location.reload(); }, 400);
+    };
+  }
 
   function createOp() {
     const listeners = [];

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SS Finder（試作）</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="header">
+      <h1>SS Finder（ガソリンスタンド検索・試作）</h1>
+    </header>
+
+    <main class="container">
+      <section class="card">
+        <form id="search-form" class="search-form">
+          <label for="query">ガソリンスタンド名：</label>
+          <input id="query" type="text" placeholder="例）ENEOS 丸の内" required />
+          <button id="search-btn" type="submit">検索</button>
+          <button id="cancel-btn" type="button" class="btn btn-secondary hidden">キャンセル</button>
+        </form>
+        <p id="helper" class="helper">ヒント：できるだけ正式名称に近いキーワードで検索してください。</p>
+        <div id="message" class="message" aria-live="polite"></div>
+        <div id="more-names-top" class="helper hidden" aria-live="polite"></div>
+      </section>
+
+      <section id="result" class="grid">
+        <div class="card">
+          <h2>基本情報</h2>
+          <dl class="info" id="info">
+            <dt>名前</dt><dd id="info-name">-</dd>
+            <dt>住所</dt><dd id="info-address">-</dd>
+            <dt>電話</dt><dd id="info-phone">-</dd>
+            <dt>営業時間</dt><dd id="info-hours">-</dd>
+            <dt>営業状況</dt><dd id="info-open-now">-</dd>
+            <dt>ブランド</dt><dd id="info-brand">-</dd>
+            <dt>運営会社</dt><dd id="info-operator">-</dd>
+            <dt>定休日</dt><dd id="info-holiday">-</dd>
+            <dt>評価</dt><dd id="info-rating">-</dd>
+            <dt>公式サイト</dt><dd id="info-website">-</dd>
+            <dt>Google地図</dt><dd id="info-gmaps">-</dd>
+          </dl>
+        </div>
+
+        <div class="card">
+          <h2>地図</h2>
+          <div class="map-wrap">
+            <iframe id="map-frame" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>外観（ストリートビュー）</h2>
+          <div class="map-wrap">
+            <iframe id="sv-frame" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
+          </div>
+        </div>
+      </section>
+
+      <section id="candidates-wrap" class="card hidden">
+        <h2>候補一覧</h2>
+        <p class="helper">上位候補をカードで表示します。残り候補は名前のみを併記します。</p>
+        <div id="candidates" class="grid"></div>
+      </section>
+
+      <section id="compare-wrap" class="card hidden" aria-live="polite">
+        <h2>比較枠（最大3件）</h2>
+        <p class="helper">気になる候補の「比較に追加」を押すと、ここに並びます。各カードの「× 閉じる」で個別に消せます。</p>
+        <div id="compare" class="grid"></div>
+      </section>
+    </main>
+
+    <!-- 開発用のAPIキー定義ファイル（作成手順は doc/setup/google-maps-setup.md） -->
+    <!-- 実ファイルは .gitignore 対象の web/config.js（例：window.CONFIG={GOOGLE_MAPS_API_KEY:"..."}） -->
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+  </body>
+  </html>
+

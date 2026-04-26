@@ -13,17 +13,22 @@ export async function loadMapsAPI(apiKey) {
     s.onerror = () => reject(new Error('Maps APIの読み込みに失敗しました'));
     document.head.appendChild(s);
   });
-  placesService = new google.maps.places.PlacesService(
-    document.createElement('div')
-  );
+  // attribution div は DOM に挿入しておく（TOS 準拠・一部ブラウザの警告回避）
+  const attrDiv = document.createElement('div');
+  attrDiv.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden;';
+  document.body.appendChild(attrDiv);
+  placesService = new google.maps.places.PlacesService(attrDiv);
 }
 
 // ── テキスト検索 ─────────────────────────────────────────
+// 地域名だけのクエリ（例:「十津川村」）でも SS が見つかるよう
+// 「ガソリンスタンド」を付加し、type で非 SS を除外する。
 export function textSearch(query) {
+  const q = `${query.trim()} ガソリンスタンド`;
   return new Promise((resolve, reject) => {
-    placesService.textSearch({ query }, (results, status) => {
+    placesService.textSearch({ query: q, type: 'gas_station' }, (results, status) => {
       const S = google.maps.places.PlacesServiceStatus;
-      if (status === S.OK)           resolve(results);
+      if (status === S.OK)               resolve(results);
       else if (status === S.ZERO_RESULTS) resolve([]);
       else reject(new Error(status));
     });
@@ -46,10 +51,34 @@ export function getDetails(placeId) {
   });
 }
 
+// ── Street View メタデータ取得 ───────────────────────────
+// 撮影日・パノラマID・カメラ位置を返す。取得失敗時は null。
+export async function getStreetViewMeta(lat, lng, apiKey) {
+  try {
+    const url = `https://maps.googleapis.com/maps/api/streetview/metadata`
+      + `?location=${lat},${lng}&radius=100&source=outdoor&key=${apiKey}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.status !== 'OK') return null;
+    return {
+      date:  data.date  ?? null,
+      panoId: data.pano_id ?? null,
+      svLat:  data.location?.lat ?? lat,
+      svLng:  data.location?.lng ?? lng,
+    };
+  } catch {
+    return null;
+  }
+}
+
 // ── 埋め込みURL ──────────────────────────────────────────
 export function getMapEmbedUrl(placeId, apiKey) {
   return `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=place_id:${placeId}`;
 }
-export function getStreetViewEmbedUrl(lat, lng, apiKey) {
-  return `https://www.google.com/maps/embed/v1/streetview?key=${apiKey}&location=${lat},${lng}&heading=0&pitch=0&fov=90`;
+// SV カメラ位置 (lat, lng) を location に使うことで Embed API が正しい
+// パノラマを選択できる。heading でSS方向に向ける。
+export function getStreetViewEmbedUrl(lat, lng, apiKey, heading = 0) {
+  return `https://www.google.com/maps/embed/v1/streetview?key=${apiKey}`
+    + `&location=${lat},${lng}&heading=${Math.round(heading)}&pitch=0&fov=90`;
 }

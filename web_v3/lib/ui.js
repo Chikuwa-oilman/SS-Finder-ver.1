@@ -1,3 +1,9 @@
+// ── HTML エスケープ ──────────────────────────────────────
+const _esc = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+export function escHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, c => _esc[c]);
+}
+
 // ── ステータスメッセージ ──────────────────────────────────
 export function setStatus(msg, type = 'info') {
   const el = document.getElementById('status-msg');
@@ -34,10 +40,16 @@ export function renderHistoryChips(history, onSelect, onClear) {
 }
 
 // ── 検索結果リスト ───────────────────────────────────────
+const RESULTS_PAGE = 10;
+
 export function renderResultsList(results, onAdd) {
-  const ul = document.getElementById('results-ul');
+  const ul      = document.getElementById('results-ul');
+  const section = document.getElementById('results-list');
   document.getElementById('results-count').textContent = results.length;
-  ul.replaceChildren(...results.map(r => {
+
+  section.querySelectorAll('.results-warn, .btn-more, .btn-collapse').forEach(el => el.remove());
+
+  const makeItem = r => {
     const li = document.createElement('li');
     li.className = 'result-item';
     const nameSpan = document.createElement('span');
@@ -48,11 +60,42 @@ export function renderResultsList(results, onAdd) {
     addrSpan.textContent = r.formatted_address ?? r.vicinity ?? '';
     const btn = document.createElement('button');
     btn.className = 'btn-add';
-    btn.textContent = '比較に追加';
+    btn.textContent = '詳細を表示';
     btn.addEventListener('click', () => onAdd(r.place_id, btn));
     li.append(nameSpan, addrSpan, btn);
     return li;
-  }));
+  };
+
+  const renderPage = count => ul.replaceChildren(...results.slice(0, count).map(makeItem));
+  renderPage(RESULTS_PAGE);
+
+  if (results.length > RESULTS_PAGE) {
+    const warn = document.createElement('p');
+    warn.className = 'results-warn';
+    warn.textContent = '件数が多いです。検索条件を絞ることをおすすめします。';
+
+    const moreBtn = document.createElement('button');
+    moreBtn.className = 'btn-more btn-secondary';
+    moreBtn.textContent = `更に表示（${results.length - RESULTS_PAGE}件）`;
+
+    const collapseBtn = document.createElement('button');
+    collapseBtn.className = 'btn-collapse btn-secondary hidden';
+    collapseBtn.textContent = '折りたたむ';
+
+    moreBtn.addEventListener('click', () => {
+      renderPage(results.length);
+      moreBtn.classList.add('hidden');
+      collapseBtn.classList.remove('hidden');
+    });
+    collapseBtn.addEventListener('click', () => {
+      renderPage(RESULTS_PAGE);
+      collapseBtn.classList.add('hidden');
+      moreBtn.classList.remove('hidden');
+    });
+
+    section.append(warn, moreBtn, collapseBtn);
+  }
+
   showEl('results-list');
 }
 

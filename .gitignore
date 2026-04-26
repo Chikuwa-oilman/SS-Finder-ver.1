@@ -1,0 +1,14 @@
+# ローカル開発用のキー（コミット禁止）
+web/config.js
+web_v2/config.js
+web_v2/
+
+# 一般的な除外
+node_modules/
+dist/
+.DS_Store
+.env
+*.log
+
+# 一時ファイル（コミット不要）
+server/.server_pid

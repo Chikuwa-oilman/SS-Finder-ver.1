@@ -5,11 +5,12 @@ import {
 } from './lib/storage.js';
 import {
   loadMapsAPI, textSearch, getDetails,
-  getMapEmbedUrl, getStreetViewEmbedUrl,
+  getMapEmbedUrl, getStreetViewEmbedUrl, getStreetViewMeta,
 } from './lib/api.js';
 import {
   setStatus, clearStatus, showEl, hideEl,
   renderHistoryChips, renderResultsList, renderFavoriteChips,
+  escHtml,
 } from './lib/ui.js';
 
 let apiKey = null;
@@ -133,54 +134,87 @@ async function addToCompare(placeId, btn) {
   if (btn) { btn.disabled = true; btn.textContent = '読込中...'; }
   try {
     const details = await getDetails(placeId);
+    const lat     = details.geometry.location.lat();
+    const lng     = details.geometry.location.lng();
+    const svMeta  = await getStreetViewMeta(lat, lng, apiKey);
     compareItems.push(details);
-    renderCompareCard(details);
+    renderCompareCard(details, svMeta);
     showEl('compare-section');
     if (btn) btn.textContent = '追加済み';
   } catch (err) {
     setStatus(`詳細取得に失敗しました: ${err.message}`, 'error');
-    if (btn) { btn.disabled = false; btn.textContent = '比較に追加'; }
+    if (btn) { btn.disabled = false; btn.textContent = '詳細を表示'; }
   }
 }
 
+// ── Street View ヘルパー ─────────────────────────────────
+// カメラ位置から建物方向への方位角を計算（真北=0、時計回り）
+function computeBearing(fromLat, fromLng, toLat, toLng) {
+  const toRad = deg => deg * Math.PI / 180;
+  const φ1 = toRad(fromLat), φ2 = toRad(toLat);
+  const Δλ = toRad(toLng - fromLng);
+  const y = Math.sin(Δλ) * Math.cos(φ2);
+  const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+// "2023-04" → "2023年4月撮影"
+function formatSvDate(dateStr) {
+  const [y, m] = dateStr.split('-');
+  return m ? `${y}年${parseInt(m, 10)}月撮影` : `${y}年撮影`;
+}
+
 // ── 比較カードレンダリング ───────────────────────────────
-function renderCompareCard(d) {
+function renderCompareCard(d, svMeta = null) {
   const grid = document.getElementById('compare-grid');
   const card = document.createElement('article');
   card.className = 'compare-card';
   card.dataset.placeId = d.place_id;
 
-  const isFav  = isFavorite(d.place_id);
-  const hours  = d.opening_hours?.weekday_text?.map(t => `<li>${t}</li>`).join('') ?? '<li>情報なし</li>';
-  const status = { OPERATIONAL: '営業中', CLOSED_TEMPORARILY: '一時休業', CLOSED_PERMANENTLY: '閉業' }[d.business_status] ?? '不明';
-  const photo  = d.photos?.[0]?.getUrl({ maxWidth: 400, maxHeight: 240 });
-  const lat    = d.geometry.location.lat();
-  const lng    = d.geometry.location.lng();
+  const isFav    = isFavorite(d.place_id);
+  const hours    = d.opening_hours?.weekday_text?.map(t => `<li>${escHtml(t)}</li>`).join('') ?? '<li>情報なし</li>';
+  const status   = { OPERATIONAL: '営業中', CLOSED_TEMPORARILY: '一時休業', CLOSED_PERMANENTLY: '閉業' }[d.business_status] ?? '不明';
+  const photo    = d.photos?.[0]?.getUrl({ maxWidth: 400, maxHeight: 240 });
+  const lat      = d.geometry.location.lat();
+  const lng      = d.geometry.location.lng();
+  const name     = escHtml(d.name);
+  const addr     = escHtml(d.formatted_address ?? d.vicinity ?? '—');
+  const phone    = escHtml(d.formatted_phone_number ?? '—');
+
+  // svMeta があればカメラ座標を location に使い、camera→SS の向きを heading に設定する
+  // Embed API は pano パラメータが不安定なため location 指定で統一する
+  const svHeading  = svMeta ? computeBearing(svMeta.svLat, svMeta.svLng, lat, lng) : 0;
+  const svLat      = svMeta?.svLat ?? lat;
+  const svLng      = svMeta?.svLng ?? lng;
+  const svSrc      = getStreetViewEmbedUrl(svLat, svLng, apiKey, svHeading);
+  const svDateText = svMeta?.date ? formatSvDate(svMeta.date) : null;
 
   card.innerHTML = `
     <header class="card-header">
-      <h3 class="card-name">${d.name}</h3>
+      <h3 class="card-name">${name}</h3>
       <div class="card-actions">
         <button class="btn-fav${isFav ? ' active' : ''}" title="${isFav ? 'お気に入り解除' : 'お気に入り追加'}">★</button>
         <button class="btn-close" title="閉じる">✕</button>
       </div>
     </header>
-    ${photo ? `<img class="card-photo" src="${photo}" alt="${d.name}の写真" loading="lazy">` : ''}
+    ${photo ? `<img class="card-photo" src="${escHtml(photo)}" alt="${name}の写真" loading="lazy">` : ''}
     <dl class="info-grid">
-      <dt>住所</dt><dd>${d.formatted_address ?? d.vicinity ?? '—'}</dd>
-      <dt>電話</dt><dd>${d.formatted_phone_number ?? '—'}</dd>
+      <dt>住所</dt><dd>${addr}</dd>
+      <dt>電話</dt><dd>${phone}</dd>
       <dt>状態</dt><dd class="status-badge">${status}</dd>
       <dt>営業時間</dt><dd><ul class="hours-list">${hours}</ul></dd>
-      ${d.website ? `<dt>ウェブ</dt><dd><a href="${d.website}" target="_blank" rel="noopener noreferrer">公式サイト ↗</a></dd>` : ''}
-      ${d.url ? `<dt>地図</dt><dd><a href="${d.url}" target="_blank" rel="noopener noreferrer">Googleマップで見る ↗</a></dd>` : ''}
+      ${d.website ? `<dt>ウェブ</dt><dd><a href="${escHtml(d.website)}" target="_blank" rel="noopener noreferrer">公式サイト ↗</a></dd>` : ''}
+      ${d.url ? `<dt>地図</dt><dd><a href="${escHtml(d.url)}" target="_blank" rel="noopener noreferrer">Googleマップで見る ↗</a></dd>` : ''}
     </dl>
     <div class="embeds">
       <iframe class="map-embed" src="${getMapEmbedUrl(d.place_id, apiKey)}"
         loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen
-        title="${d.name}の地図"></iframe>
-      <iframe class="sv-embed" src="${getStreetViewEmbedUrl(lat, lng, apiKey)}"
-        loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen
-        title="${d.name}のストリートビュー"></iframe>
+        title="${name}の地図"></iframe>
+      <div class="sv-wrap">
+        <iframe class="sv-embed" src="${svSrc}"
+          loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen
+          title="${name}のストリートビュー"></iframe>
+        ${svDateText ? `<p class="sv-date">撮影: ${escHtml(svDateText)}</p>` : ''}
+      </div>
     </div>
   `;
 

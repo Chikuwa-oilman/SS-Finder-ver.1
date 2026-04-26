@@ -20,16 +20,32 @@ export async function loadMapsAPI(apiKey) {
   placesService = new google.maps.places.PlacesService(attrDiv);
 }
 
+// ── クエリから地理バイアス座標を取得 ────────────────────────
+// 「ENEOS 松任」→ 松任の座標、「十津川村」→ 十津川村の座標。
+// 国レベルの曖昧な結果は除外し null を返す。
+export function geocodeForBias(query) {
+  return new Promise(resolve => {
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ address: query, region: 'JP' }, (results, status) => {
+      if (status !== 'OK' || !results?.length) { resolve(null); return; }
+      const r = results[0];
+      // 「日本」など国レベルは広すぎるため除外
+      if (r.types.includes('country')) { resolve(null); return; }
+      const loc = r.geometry.location;
+      resolve({ lat: loc.lat(), lng: loc.lng() });
+    });
+  });
+}
+
 // ── テキスト検索 ─────────────────────────────────────────
-// 地域名だけのクエリ（例:「十津川村」）でも SS が見つかるよう
-// 「ガソリンスタンド」を付加し、type で非 SS を除外する。
-// location を渡すと半径 50km 以内を優先して返す（地理バイアス）。
-export function textSearch(query, location = null) {
+// location + radius でエリアを指定すると地理的に絞り込まれる。
+// クエリ由来の座標（30km）> 現在地バイアス（50km）の優先順で呼ばれる。
+export function textSearch(query, location = null, radius = 30000) {
   const q = `${query.trim()} ガソリンスタンド`;
   const req = { query: q, type: 'gas_station' };
   if (location) {
     req.location = new google.maps.LatLng(location.lat, location.lng);
-    req.radius   = 50000; // 50km バイアス（厳密フィルタではない）
+    req.radius   = radius;
   }
   return new Promise((resolve, reject) => {
     placesService.textSearch(req, (results, status) => {

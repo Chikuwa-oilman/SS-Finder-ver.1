@@ -14,7 +14,20 @@ import {
 } from './lib/ui.js';
 
 let apiKey = null;
+let userLocation = null; // 現在地キャッシュ
 const compareItems = []; // 最大3件
+
+// ── 現在地を静かに取得（拒否・タイムアウト時は null） ────
+function getLocationSilently() {
+  if (!navigator.geolocation) return Promise.resolve(null);
+  return new Promise(resolve => {
+    navigator.geolocation.getCurrentPosition(
+      pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      ()  => resolve(null),
+      { timeout: 3000, maximumAge: 300_000 } // 5分キャッシュ
+    );
+  });
+}
 
 // ── 初期化 ───────────────────────────────────────────────
 async function init() {
@@ -95,7 +108,8 @@ async function runSearch(query) {
   cancelBtn.addEventListener('click', onCancel, { once: true });
 
   try {
-    const results = await textSearch(query);
+    if (!userLocation) userLocation = await getLocationSilently();
+    const results = await textSearch(query, userLocation);
     if (aborted) return;
     if (!results.length) {
       setStatus('スタンドが見つかりませんでした。', 'warn');

@@ -23,10 +23,16 @@ export async function loadMapsAPI(apiKey) {
 // ── テキスト検索 ─────────────────────────────────────────
 // 地域名だけのクエリ（例:「十津川村」）でも SS が見つかるよう
 // 「ガソリンスタンド」を付加し、type で非 SS を除外する。
-export function textSearch(query) {
+// location を渡すと半径 50km 以内を優先して返す（地理バイアス）。
+export function textSearch(query, location = null) {
   const q = `${query.trim()} ガソリンスタンド`;
+  const req = { query: q, type: 'gas_station' };
+  if (location) {
+    req.location = new google.maps.LatLng(location.lat, location.lng);
+    req.radius   = 50000; // 50km バイアス（厳密フィルタではない）
+  }
   return new Promise((resolve, reject) => {
-    placesService.textSearch({ query: q, type: 'gas_station' }, (results, status) => {
+    placesService.textSearch(req, (results, status) => {
       const S = google.maps.places.PlacesServiceStatus;
       if (status === S.OK)               resolve(results);
       else if (status === S.ZERO_RESULTS) resolve([]);

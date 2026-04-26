@@ -25,15 +25,22 @@ export async function loadMapsAPI(apiKey) {
 // 国レベルの曖昧な結果は除外し null を返す。
 export function geocodeForBias(query) {
   return new Promise(resolve => {
-    const geocoder = new google.maps.Geocoder();
-    geocoder.geocode({ address: query, region: 'JP' }, (results, status) => {
-      if (status !== 'OK' || !results?.length) { resolve(null); return; }
-      const r = results[0];
-      // 「日本」など国レベルは広すぎるため除外
-      if (r.types.includes('country')) { resolve(null); return; }
-      const loc = r.geometry.location;
-      resolve({ lat: loc.lat(), lng: loc.lng() });
-    });
+    // 3秒応答がなければ null にフォールバック（API未有効化・ネット障害対策）
+    const timer = setTimeout(() => resolve(null), 3000);
+    try {
+      const geocoder = new google.maps.Geocoder();
+      geocoder.geocode({ address: query, region: 'JP' }, (results, status) => {
+        clearTimeout(timer);
+        if (status !== 'OK' || !results?.length) { resolve(null); return; }
+        const r = results[0];
+        if (r.types.includes('country')) { resolve(null); return; }
+        const loc = r.geometry.location;
+        resolve({ lat: loc.lat(), lng: loc.lng() });
+      });
+    } catch {
+      clearTimeout(timer);
+      resolve(null);
+    }
   });
 }
 

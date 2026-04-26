@@ -111,7 +111,7 @@ async function runSearch(query) {
     if (!userLocation) userLocation = await getLocationSilently();
     // クエリ自体をジオコードして地名座標を取得（例:「松任」→ 石川県の座標）
     // 取得できた場合は半径30km、できない場合は現在地バイアス50kmで検索
-    const queryBias = await geocodeForBias(query);
+    const queryBias = await geocodeForBias(query).catch(() => null);
     const location  = queryBias ?? userLocation;
     const radius    = queryBias ? 30000 : 50000;
     const results   = await textSearch(query, location, radius);

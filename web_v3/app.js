@@ -14,20 +14,7 @@ import {
 } from './lib/ui.js';
 
 let apiKey = null;
-let userLocation = null; // 現在地キャッシュ
 const compareItems = []; // 最大3件
-
-// ── 現在地を静かに取得（拒否・タイムアウト時は null） ────
-function getLocationSilently() {
-  if (!navigator.geolocation) return Promise.resolve(null);
-  return new Promise(resolve => {
-    navigator.geolocation.getCurrentPosition(
-      pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      ()  => resolve(null),
-      { timeout: 3000, maximumAge: 300_000 } // 5分キャッシュ
-    );
-  });
-}
 
 // ── 初期化 ───────────────────────────────────────────────
 async function init() {
@@ -108,13 +95,10 @@ async function runSearch(query) {
   cancelBtn.addEventListener('click', onCancel, { once: true });
 
   try {
-    if (!userLocation) userLocation = await getLocationSilently();
-    // クエリ自体をジオコードして地名座標を取得（例:「松任」→ 石川県の座標）
-    // 取得できた場合は半径30km、できない場合は現在地バイアス50kmで検索
+    // クエリをジオコードして地名座標を取得（例:「松任」→ 石川県の座標）
+    // 失敗・タイムアウト時は location=null でバイアスなし検索にフォールバック
     const queryBias = await geocodeForBias(query).catch(() => null);
-    const location  = queryBias ?? userLocation;
-    const radius    = queryBias ? 30000 : 50000;
-    const results   = await textSearch(query, location, radius);
+    const results   = await textSearch(query, queryBias);
     if (aborted) return;
     if (!results.length) {
       setStatus('スタンドが見つかりませんでした。', 'warn');

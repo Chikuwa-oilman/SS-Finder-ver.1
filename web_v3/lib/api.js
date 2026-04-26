@@ -45,14 +45,13 @@ export function geocodeForBias(query) {
 }
 
 // ── テキスト検索 ─────────────────────────────────────────
-// location + radius でエリアを指定すると地理的に絞り込まれる。
-// クエリ由来の座標（30km）> 現在地バイアス（50km）の優先順で呼ばれる。
-export function textSearch(query, location = null, radius = 30000) {
+// location を渡すと半径30km以内を優先（地理バイアス）。
+export function textSearch(query, location = null) {
   const q = `${query.trim()} ガソリンスタンド`;
   const req = { query: q, type: 'gas_station' };
   if (location) {
     req.location = new google.maps.LatLng(location.lat, location.lng);
-    req.radius   = radius;
+    req.radius   = 30000; // 30km バイアス
   }
   return new Promise((resolve, reject) => {
     placesService.textSearch(req, (results, status) => {

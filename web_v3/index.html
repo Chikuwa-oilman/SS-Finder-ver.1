@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="ガソリンスタンドの基本情報・地図・ストリートビューを一覧比較できるWebアプリ">
+  <title>SS Finder</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ヘッダー -->
+  <header class="site-header">
+    <h1 class="site-title">⛽ SS Finder</h1>
+    <button id="btn-api-toggle" type="button" class="btn-secondary">APIキー設定</button>
+  </header>
+
+  <!-- APIキー設定セクション（初期非表示） -->
+  <section id="api-settings" class="api-settings hidden" aria-label="APIキー設定">
+    <div class="settings-inner">
+      <h2>Google Maps APIキー設定</h2>
+      <p class="settings-hint">
+        <a href="https://developers.google.com/maps/documentation/javascript/get-api-key" target="_blank" rel="noopener">APIキーの取得方法 ↗</a>
+        （Places API / Maps Embed API を有効化してください）
+      </p>
+      <label for="input-api-key">APIキー</label>
+      <input type="password" id="input-api-key" placeholder="AIza..." autocomplete="off"
+             aria-describedby="key-hint">
+      <p id="key-hint" class="settings-hint">キーはブラウザのLocalStorageにのみ保存されます。</p>
+      <div class="settings-actions">
+        <button id="btn-save-key" type="button" class="btn-primary">保存</button>
+        <button id="btn-clear-key" type="button" class="btn-secondary">クリア</button>
+      </div>
+    </div>
+  </section>
+
+  <main>
+
+    <!-- 検索フォーム -->
+    <section class="search-section" aria-label="スタンド検索">
+      <form id="search-form" role="search">
+        <label for="input-query">スタンド名・地域名で検索</label>
+        <div class="input-row">
+          <input type="search" id="input-query"
+                 placeholder="例: ENEOS 中之島"
+                 autocomplete="off"
+                 aria-label="検索キーワード">
+          <button id="btn-search" type="submit" class="btn-primary" disabled>検索</button>
+          <button id="btn-cancel" type="button" class="btn-secondary hidden">キャンセル</button>
+        </div>
+      </form>
+
+      <!-- 検索履歴チップ -->
+      <div id="search-history"
+           class="chip-row"
+           role="list"
+           aria-label="検索履歴"></div>
+
+      <!-- ステータスメッセージ -->
+      <div id="status-msg"
+           role="status"
+           aria-live="polite"
+           aria-atomic="true"></div>
+    </section>
+
+    <!-- 検索結果リスト（複数件のとき表示） -->
+    <section id="results-list" class="results-section hidden" aria-label="検索結果一覧">
+      <h2>検索結果 <span id="results-count"></span>件</h2>
+      <ul id="results-ul" class="results-ul"></ul>
+    </section>
+
+    <!-- 比較グリッド（最大3件） -->
+    <section id="compare-section" class="hidden" aria-label="比較">
+      <h2 class="section-title">比較</h2>
+      <div id="compare-grid" class="compare-grid"></div>
+    </section>
+
+    <!-- お気に入りセクション -->
+    <section id="favorites-section" class="hidden" aria-label="お気に入り">
+      <h2 class="section-title">★ お気に入り</h2>
+      <div id="favorites-list"
+           class="chip-row"
+           role="list"
+           aria-label="お気に入り一覧"></div>
+    </section>
+
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

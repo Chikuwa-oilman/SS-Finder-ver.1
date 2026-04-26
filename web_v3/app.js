@@ -4,7 +4,7 @@ import {
   getFavorites, toggleFavorite, isFavorite,
 } from './lib/storage.js';
 import {
-  loadMapsAPI, textSearch, getDetails, geocodeForBias,
+  loadMapsAPI, textSearch, getDetails,
   getMapEmbedUrl, getStreetViewEmbedUrl, getStreetViewMeta,
 } from './lib/api.js';
 import {
@@ -95,10 +95,7 @@ async function runSearch(query) {
   cancelBtn.addEventListener('click', onCancel, { once: true });
 
   try {
-    // クエリをジオコードして地名座標を取得（例:「松任」→ 石川県の座標）
-    // 失敗・タイムアウト時は location=null でバイアスなし検索にフォールバック
-    const queryBias = await geocodeForBias(query).catch(() => null);
-    const results   = await textSearch(query, queryBias);
+    const results = await textSearch(query);
     if (aborted) return;
     if (!results.length) {
       setStatus('スタンドが見つかりませんでした。', 'warn');
